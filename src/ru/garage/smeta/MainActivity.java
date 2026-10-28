@@ -2,194 +2,154 @@ package ru.garage.smeta;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Message;
-import android.view.Gravity;
-import android.view.View;
-import android.view.ViewGroup;
-import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
-import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.widget.Button;
-import android.widget.FrameLayout;
-import android.widget.LinearLayout;
-import android.widget.ProgressBar;
-import android.widget.TextView;
 
-/** Оболочка над опубликованной сметой: страница и её база живут в Claude, вход один раз. */
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+
+/** Смета работает без интернета: страница лежит в приложении, данные — в файле на телефоне. */
 public class MainActivity extends Activity {
-    static final String HOME = "https://claude.ai/artifact/7X81EGdbRck1tEHcKKoE29";
+    static final int REQ_EXPORT = 1, REQ_PICK = 2;
 
     WebView web;
-    ProgressBar bar;
-    View errorView;
+    String pendingExport;
+    ValueCallback<Uri[]> pendingPick;
 
     @Override
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
-        FrameLayout root = new FrameLayout(this);
-
         web = new WebView(this);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
-        s.setDatabaseEnabled(true);
-        s.setJavaScriptCanOpenWindowsAutomatically(true);
-        s.setSupportMultipleWindows(true);
-        s.setMediaPlaybackRequiresUserGesture(false);
-        // Без пометки «wv» страницы входа не отказывают встроенному браузеру
-        s.setUserAgentString(s.getUserAgentString().replace("; wv)", ")").replaceAll("Version/\\S+ ", ""));
-
-        CookieManager cm = CookieManager.getInstance();
-        cm.setAcceptCookie(true);
-        cm.setAcceptThirdPartyCookies(web, true);
+        s.setAllowFileAccess(true);
+        web.addJavascriptInterface(new Bridge(), "Android");
 
         web.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
-                return openOutside(r.getUrl());
-            }
-
-            @Override
-            public void onPageStarted(WebView v, String url, Bitmap f) {
-                errorView.setVisibility(View.GONE);
-            }
-
-            @Override
-            public void onPageFinished(WebView v, String url) {
-                CookieManager.getInstance().flush();
-            }
-
-            @Override
-            public void onReceivedError(WebView v, WebResourceRequest r, WebResourceError e) {
-                if (r.isForMainFrame()) errorView.setVisibility(View.VISIBLE);
-            }
-        });
-
-        web.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public void onProgressChanged(WebView v, int p) {
-                bar.setProgress(p);
-                bar.setVisibility(p < 100 ? View.VISIBLE : View.GONE);
-            }
-
-            // Ссылки «в новом окне» открываем здесь же
-            @Override
-            public boolean onCreateWindow(WebView v, boolean dialog, boolean user, Message msg) {
-                WebView tmp = new WebView(MainActivity.this);
-                tmp.setWebViewClient(new WebViewClient() {
-                    @Override
-                    public boolean shouldOverrideUrlLoading(WebView t, WebResourceRequest r) {
-                        if (!openOutside(r.getUrl())) web.loadUrl(r.getUrl().toString());
-                        t.destroy();
-                        return true;
-                    }
-                });
-                ((WebView.WebViewTransport) msg.obj).setWebView(tmp);
-                msg.sendToTarget();
+                Uri u = r.getUrl();
+                if ("file".equals(u.getScheme())) return false;
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, u));
+                } catch (Exception ignored) {
+                }
                 return true;
             }
         });
 
-        bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        bar.setMax(100);
-        bar.getProgressDrawable().setTint(0xFFC4521C);
+        // Выбор файла резервной копии для «Загрузить из файла»
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
+                if (pendingPick != null) pendingPick.onReceiveValue(null);
+                pendingPick = cb;
+                Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType("*/*");
+                try {
+                    startActivityForResult(i, REQ_PICK);
+                } catch (Exception e) {
+                    pendingPick = null;
+                    return false;
+                }
+                return true;
+            }
+        });
 
-        errorView = buildErrorView();
-        errorView.setVisibility(View.GONE);
-
-        root.addView(web, new FrameLayout.LayoutParams(-1, -1));
-        root.addView(errorView, new FrameLayout.LayoutParams(-1, -1));
-        root.addView(bar, new FrameLayout.LayoutParams(-1, dp(3), Gravity.TOP));
-        root.setFitsSystemWindows(true);
-        setContentView(root);
-
-        if (saved != null) web.restoreState(saved);
-        else web.loadUrl(startUrl(getIntent()));
+        web.setFitsSystemWindows(true);
+        setContentView(web);
+        web.loadUrl("file:///android_asset/index.html");
     }
 
-    String startUrl(Intent i) {
-        Uri u = i != null ? i.getData() : null;
-        return u != null && "claude.ai".equals(u.getHost()) ? u.toString() : HOME;
+    File dataFile() {
+        return new File(getFilesDir(), "data.json");
+    }
+
+    class Bridge {
+        @JavascriptInterface
+        public String load() {
+            File f = dataFile();
+            if (!f.exists()) return null;
+            try (InputStream in = new FileInputStream(f)) {
+                return readAll(in);
+            } catch (Exception e) {
+                return null;
+            }
+        }
+
+        @JavascriptInterface
+        public synchronized void save(String json) {
+            // Пишем во временный файл и подменяем, чтобы не испортить данные при сбое
+            File tmp = new File(getFilesDir(), "data.json.tmp");
+            try (OutputStream out = new FileOutputStream(tmp)) {
+                out.write(json.getBytes(StandardCharsets.UTF_8));
+            } catch (Exception e) {
+                return;
+            }
+            tmp.renameTo(dataFile());
+        }
+
+        @JavascriptInterface
+        public void exportFile(final String json, final String name) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    pendingExport = json;
+                    Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("application/json");
+                    i.putExtra(Intent.EXTRA_TITLE, name);
+                    startActivityForResult(i, REQ_EXPORT);
+                }
+            });
+        }
     }
 
     @Override
-    protected void onNewIntent(Intent i) {
-        super.onNewIntent(i);
-        if (i.getData() != null) web.loadUrl(startUrl(i));
-    }
-
-    /** Claude, вход и сама страница остаются в приложении; остальное (телефон, почта, чужие сайты) уходит наружу. */
-    boolean openOutside(Uri u) {
-        String scheme = u.getScheme() == null ? "" : u.getScheme();
-        String host = u.getHost() == null ? "" : u.getHost();
-        if (scheme.equals("https") && (host.equals("claude.ai") || host.endsWith(".claude.ai")
-                || host.endsWith("anthropic.com") || host.endsWith("claudeusercontent.com")
-                || host.endsWith("google.com") || host.endsWith("apple.com"))) {
-            return false;
-        }
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW, u));
-        } catch (Exception ignored) {
-        }
-        return true;
-    }
-
-    View buildErrorView() {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setGravity(Gravity.CENTER);
-        box.setBackgroundColor(Color.parseColor("#EEF0EF"));
-        box.setPadding(dp(24), dp(24), dp(24), dp(24));
-        TextView t = new TextView(this);
-        t.setText("Нет связи с базой.\nПроверьте интернет и попробуйте ещё раз.");
-        t.setTextSize(16);
-        t.setTextColor(Color.parseColor("#1C2226"));
-        t.setGravity(Gravity.CENTER);
-        Button b = new Button(this);
-        b.setText("Повторить");
-        b.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View x) {
-                errorView.setVisibility(View.GONE);
-                String cur = web.getUrl();
-                if (cur == null || cur.startsWith("data:") || cur.startsWith("about:")) web.loadUrl(HOME);
-                else web.reload();
+    protected void onActivityResult(int req, int res, Intent data) {
+        Uri u = res == RESULT_OK && data != null ? data.getData() : null;
+        if (req == REQ_PICK && pendingPick != null) {
+            pendingPick.onReceiveValue(u != null ? new Uri[]{u} : null);
+            pendingPick = null;
+        } else if (req == REQ_EXPORT && pendingExport != null) {
+            boolean ok = false;
+            if (u != null) {
+                try (OutputStream out = getContentResolver().openOutputStream(u)) {
+                    out.write(pendingExport.getBytes(StandardCharsets.UTF_8));
+                    ok = true;
+                } catch (Exception ignored) {
+                }
+                web.evaluateJavascript("window.onExported&&window.onExported(" + ok + ")", null);
             }
-        });
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = dp(16);
-        box.addView(t);
-        box.addView(b, lp);
-        return box;
+            pendingExport = null;
+        }
     }
 
-    int dp(int v) {
-        return Math.round(v * getResources().getDisplayMetrics().density);
+    static String readAll(InputStream in) throws java.io.IOException {
+        ByteArrayOutputStream b = new ByteArrayOutputStream();
+        byte[] buf = new byte[8192];
+        int n;
+        while ((n = in.read(buf)) > 0) b.write(buf, 0, n);
+        return new String(b.toByteArray(), StandardCharsets.UTF_8);
     }
 
     @Override
     public void onBackPressed() {
         if (web.canGoBack()) web.goBack();
         else super.onBackPressed();
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle out) {
-        super.onSaveInstanceState(out);
-        web.saveState(out);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        CookieManager.getInstance().flush();
     }
 }

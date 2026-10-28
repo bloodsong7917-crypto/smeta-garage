@@ -12,8 +12,8 @@ cd $P
 rm -rf out && mkdir -p out/gen out/classes out/dex
 
 $BT/aapt2.exe compile --dir res -o out/res.zip
-$BT/aapt2.exe link -I $JAR --manifest AndroidManifest.xml --java out/gen -o out/base.apk out/res.zip \
-  --min-sdk-version 26 --target-sdk-version 34 --version-code 1 --version-name 1.0
+$BT/aapt2.exe link -I $JAR --manifest AndroidManifest.xml --java out/gen -A assets -o out/base.apk out/res.zip \
+  --min-sdk-version 26 --target-sdk-version 34 --version-code 2 --version-name 2.0
 
 javac -nowarn -source 8 -target 8 -bootclasspath $JAR -d out/classes $(find src out/gen -name '*.java')
 cmd //c "$(cygpath -w $BT/d8.bat)" --lib "$(cygpath -w $JAR)" --min-api 26 --output "$(cygpath -w out/dex)" $(find out/classes -name '*.class' | xargs -n1 cygpath -w)

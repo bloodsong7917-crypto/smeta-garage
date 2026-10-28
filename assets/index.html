@@ -1,8 +1,5 @@
 <!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Смета и журнал сервиса</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
 <style>
 /* Layout: рабочий инструмент мастера — липкие вкладки сверху, одна колонка до 920px, итог сметы липкой полосой снизу */
 :root{
@@ -205,6 +202,12 @@ button{font:inherit;cursor:pointer}
       </div>
       <p class="muted" style="margin:0;font-size:13px">Цена работы = нормо-часы × ставка × коэффициент класса, округление до 50 ₽. Если у работы указана фиксированная цена, берётся она.</p>
     </div>
+    <div class="card" style="display:grid;gap:10px">
+      <h2>Резервная копия</h2>
+      <p class="muted" style="margin:0;font-size:13px">Все данные хранятся только на этом телефоне. Сохраняйте копию в файл, чтобы не потерять журнал или перенести его на другой телефон.</p>
+      <div class="row"><button class="btn" id="b-exp">Сохранить в файл</button><button class="btn" id="b-imp">Загрузить из файла</button><input type="file" id="b-file" accept=".json,application/json,text/plain,*/*" hidden></div>
+      <div class="row" id="b-conf" hidden style="font-size:14px"><span id="b-info"></span><button class="btn sm pri" id="b-yes">Заменить</button><button class="btn sm ghost" id="b-no">Отмена</button></div>
+    </div>
     <div class="card" style="display:grid;gap:8px">
       <div class="row"><h2 style="margin-right:auto">Работы</h2><button class="btn sm" id="p-add">+ Работа</button></div>
       <div class="ped muted" style="font-size:12px;border-bottom:1px solid var(--rule)"><span>Название</span><span>Н/ч</span><span>Фикс. ₽</span><span></span></div>
@@ -254,7 +257,7 @@ function cats(){const s=[];prices.forEach(p=>{if(p.cat&&!s.includes(p.cat))s.pus
 function renderCats(){const el=$('cats');el.innerHTML='';['',...cats()].forEach(c=>{const b=document.createElement('button');b.className='chip';b.textContent=c||'Все';b.setAttribute('aria-pressed',String(c===cat));b.onclick=()=>{cat=c;renderCats();renderPlist();};el.appendChild(b);});}
 function renderPlist(){
   const el=$('plist');
-  if(!prices.length){el.innerHTML=`<div class="empty">${db?'Прайс пока пуст. Добавьте работы на вкладке «Прайс».':'Прайс хранится в базе страницы. Откройте страницу в Claude, войдя в свой аккаунт.'}</div>`;return;}
+  if(!prices.length){el.innerHTML=`<div class="empty">${db?'Прайс пока пуст. Добавьте работы на вкладке «Прайс».':'Загрузка…'}</div>`;return;}
   const list=prices.filter(p=>(!cat||p.cat===cat)&&(!q||(p.name+' '+p.cat).toLowerCase().includes(q)));
   if(!list.length){el.innerHTML='<div class="empty">Ничего не нашлось. Попробуйте другое слово.</div>';return;}
   let html='',last=null;
@@ -313,7 +316,7 @@ function clientText(){const c=calc(),f=readForm();let t=`Смета${f.car?' · 
 async function copyText(t){try{await navigator.clipboard.writeText(t);toast('Скопировано');}catch(e){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('Скопировано');}catch(_){toast('Выделите текст и скопируйте вручную');}ta.remove();}}
 $('copy').onclick=()=>{if(!est.lines.length&&!est.parts.length){toast('Сначала добавьте работы');return;}copyText(clientText());};
 $('save').onclick=async()=>{
-  if(!db){toast('База недоступна: войдите в аккаунт Claude');return;}
+  if(!db){toast('База ещё загружается');return;}
   if(!est.lines.length&&!est.parts.length){toast('Добавьте хотя бы одну работу или запчасть');return;}
   const f=readForm();if(!f.plate&&!f.phone){toast('Укажите госномер или телефон');$('o-plate').focus();return;}
   const c=calc();const body={date:f.date||today(),status:f.status,plate:f.plate,car:f.car,name:f.name,phone:f.phone,km:+f.km||null,note:f.note,klass:est.klass,
@@ -343,7 +346,7 @@ function renderLog(){
   renderOrders();}
 function renderOrders(){
   const el=$('orders');const lq=$('lq').value.trim().toLowerCase(),ls=$('lst').value;
-  if(!db){el.innerHTML='<div class="empty">Журнал хранится в базе страницы. Откройте страницу в Claude, войдя в свой аккаунт.</div>';return;}
+  if(!db){el.innerHTML='<div class="empty">Загрузка…</div>';return;}
   const list=orders.filter(o=>(!ls||o.status===ls)&&(!lq||[o.plate,o.phone,o.car,o.name].join(' ').toLowerCase().includes(lq)));
   if(!orders.length){el.innerHTML='<div class="empty">Заказов пока нет. Соберите смету на вкладке «Смета» и нажмите «Сохранить заказ».</div>';return;}
   if(!list.length){el.innerHTML='<div class="empty">Ничего не нашлось.</div>';return;}
@@ -374,7 +377,7 @@ function dueList(){const by={};orders.forEach(o=>{if(o.status!=='paid'&&o.status
     .filter(x=>x.due<=soon&&!(x.o.remindedAt&&x.o.remindedAt>=x.o.date)).sort((a,b)=>a.due-b.due);}
 function renderRem(){
   $('rm-m').textContent=settings.remind;const el=$('rems');const list=dueList();
-  if(!db){el.innerHTML='<div class="empty">Напоминания строятся по журналу. Откройте страницу в Claude, войдя в свой аккаунт.</div>';return;}
+  if(!db){el.innerHTML='<div class="empty">Загрузка…</div>';return;}
   if(!list.length){el.innerHTML='<div class="empty">Сейчас напоминать некому. Машины появятся здесь через '+settings.remind+' мес. после оплаченного заказа.</div>';return;}
   el.innerHTML='';list.forEach(({o,due})=>{const d=document.createElement('div');d.className='card';d.style.display='grid';d.style.gap='8px';
     const late=due<new Date();const msg=`Здравствуйте${o.name?', '+o.name:''}! Это мастерская, где вы делали ${o.car||'машину'} ${o.plate||''} ${fmtDate(o.date)}. Прошло ${settings.remind} мес. — пора на плановое ТО: масло, фильтры, проверка подвески. Есть свободное время на этой неделе, записать вас?`;
@@ -395,7 +398,7 @@ let pedDirty=false;
 $('pedit').addEventListener('focusout',()=>setTimeout(()=>{if(pedDirty&&!$('pedit').contains(document.activeElement)){pedDirty=false;renderPriceEdit();}},0));
 function renderPriceEdit(force){
   const el=$('pedit');if(!force&&el.contains(document.activeElement)){pedDirty=true;return;}
-  if(!db){el.innerHTML='<div class="empty">Прайс хранится в базе страницы. Откройте страницу в Claude, войдя в свой аккаунт.</div>';return;}
+  if(!db){el.innerHTML='<div class="empty">Загрузка…</div>';return;}
   if(!prices.length){el.innerHTML='<div class="empty">Работ пока нет. Нажмите «+ Работа».</div>';return;}
   el.innerHTML='';let last=null;
   prices.forEach(p=>{if(p.cat!==last){const h=document.createElement('div');h.className='cat-h';h.textContent=p.cat||'Без раздела';el.appendChild(h);last=p.cat;}
@@ -409,13 +412,48 @@ function renderPriceEdit(force){
 $('p-add').onclick=async()=>{if(!db){toast('База недоступна');return;}const c=cat||cats()[0]||'Прочее';const ord=prices.reduce((m,p)=>Math.max(m,+p.ord||0),0)+1;
   try{await db.collection('prices').add({cat:c,name:'Новая работа',hours:1,fixed:0,unit:'шт',ord});toast('Добавлено в раздел «'+c+'»');}catch(e){toast('Не удалось добавить');}};
 
+/* ---------- локальная база: файл в приложении или localStorage в браузере ---------- */
+const SEED={"settings":{"rate":1500,"kb":1.25,"kc":1.5,"target":185000,"remind":6},"prices":{"p01":{"cat":"Диагностика","fixed":0,"hours":0.17,"name":"Диагностика ходовой части","ord":1,"unit":"работа"},"p02":{"cat":"Диагностика","fixed":0,"hours":0.5,"name":"Компьютерная диагностика двигателя","ord":2,"unit":"работа"},"p03":{"cat":"Диагностика","fixed":0,"hours":0.6,"name":"Замер компрессии","ord":3,"unit":"работа"},"p04":{"cat":"Диагностика","fixed":0,"hours":1,"name":"Поиск неисправности, за час","ord":4,"unit":"час"},"p05":{"cat":"Передняя подвеска","fixed":0,"hours":0.51,"name":"Замена стойки амортизатора в сборе","ord":5,"unit":"шт"},"p06":{"cat":"Передняя подвеска","fixed":0,"hours":0.51,"name":"Замена амортизатора с разборкой стойки","ord":6,"unit":"шт"},"p07":{"cat":"Передняя подвеска","fixed":0,"hours":1.3,"name":"Замена пружины передней","ord":7,"unit":"шт"},"p08":{"cat":"Передняя подвеска","fixed":0,"hours":1.3,"name":"Замена опоры стойки / опорного подшипника","ord":8,"unit":"шт"},"p09":{"cat":"Передняя подвеска","fixed":0,"hours":0.8,"name":"Замена шаровой опоры","ord":9,"unit":"шт"},"p10":{"cat":"Передняя подвеска","fixed":0,"hours":1,"name":"Замена нижнего рычага","ord":10,"unit":"шт"},"p11":{"cat":"Передняя подвеска","fixed":0,"hours":0.68,"name":"Замена сайлентблоков рычага (запрессовка)","ord":11,"unit":"рычаг"},"p12":{"cat":"Передняя подвеска","fixed":0,"hours":0.4,"name":"Замена стойки стабилизатора","ord":12,"unit":"шт"},"p13":{"cat":"Передняя подвеска","fixed":0,"hours":0.8,"name":"Замена втулок стабилизатора","ord":13,"unit":"пара"},"p14":{"cat":"Передняя подвеска","fixed":0,"hours":0.68,"name":"Замена ступичного подшипника переднего","ord":14,"unit":"шт"},"p15":{"cat":"Передняя подвеска","fixed":0,"hours":1.5,"name":"Замена ШРУСа наружного","ord":15,"unit":"шт"},"p16":{"cat":"Передняя подвеска","fixed":0,"hours":1.2,"name":"Замена пыльника ШРУСа","ord":16,"unit":"шт"},"p17":{"cat":"Передняя подвеска","fixed":0,"hours":1.2,"name":"Замена привода в сборе","ord":17,"unit":"шт"},"p18":{"cat":"Задняя подвеска","fixed":0,"hours":0.48,"name":"Замена амортизатора заднего","ord":18,"unit":"шт"},"p19":{"cat":"Задняя подвеска","fixed":0,"hours":0.8,"name":"Замена пружины задней","ord":19,"unit":"шт"},"p20":{"cat":"Задняя подвеска","fixed":0,"hours":0.34,"name":"Замена сайлентблока задней балки","ord":20,"unit":"шт"},"p21":{"cat":"Задняя подвеска","fixed":0,"hours":0.68,"name":"Замена ступичного подшипника заднего","ord":21,"unit":"шт"},"p22":{"cat":"Задняя подвеска","fixed":0,"hours":1,"name":"Замена рычагов задней подвески (классика)","ord":22,"unit":"шт"},"p23":{"cat":"Нива, УАЗ, классика","fixed":0,"hours":2.5,"name":"Замена сайлентблоков рычагов (одна сторона, Нива)","ord":23,"unit":"сторона"},"p24":{"cat":"Нива, УАЗ, классика","fixed":0,"hours":1.2,"name":"Замена шаровых опор верх+низ (одна сторона, Нива)","ord":24,"unit":"сторона"},"p25":{"cat":"Нива, УАЗ, классика","fixed":0,"hours":0.8,"name":"Регулировка подшипников ступицы","ord":25,"unit":"сторона"},"p26":{"cat":"Нива, УАЗ, классика","fixed":0,"hours":1,"name":"Замена крестовины кардана","ord":26,"unit":"шт"},"p27":{"cat":"Нива, УАЗ, классика","fixed":0,"hours":1,"name":"Замена подвесного подшипника кардана","ord":27,"unit":"шт"},"p28":{"cat":"Нива, УАЗ, классика","fixed":0,"hours":1,"name":"Замена масла в мостах и раздатке","ord":28,"unit":"работа"},"p29":{"cat":"Нива, УАЗ, классика","fixed":0,"hours":1.2,"name":"Замена сальника хвостовика моста","ord":29,"unit":"шт"},"p30":{"cat":"Рулевое","fixed":0,"hours":0.18,"name":"Замена рулевого наконечника","ord":30,"unit":"шт"},"p31":{"cat":"Рулевое","fixed":0,"hours":0.8,"name":"Замена рулевой тяги","ord":31,"unit":"шт"},"p32":{"cat":"Рулевое","fixed":0,"hours":1,"name":"Замена пыльника рулевой рейки","ord":32,"unit":"шт"},"p33":{"cat":"Рулевое","fixed":0,"hours":2.5,"name":"Снятие и установка рулевой рейки","ord":33,"unit":"работа"},"p34":{"cat":"Тормоза","fixed":0,"hours":0.34,"name":"Замена передних колодок","ord":34,"unit":"ось"},"p35":{"cat":"Тормоза","fixed":0,"hours":1.2,"name":"Замена передних дисков и колодок","ord":35,"unit":"ось"},"p36":{"cat":"Тормоза","fixed":0,"hours":0.56,"name":"Замена задних колодок (барабан)","ord":36,"unit":"ось"},"p37":{"cat":"Тормоза","fixed":0,"hours":0.38,"name":"Замена задних колодок (диск)","ord":37,"unit":"ось"},"p38":{"cat":"Тормоза","fixed":0,"hours":0.8,"name":"Замена суппорта","ord":38,"unit":"шт"},"p39":{"cat":"Тормоза","fixed":0,"hours":0.8,"name":"Замена тормозной жидкости с прокачкой","ord":39,"unit":"работа"},"p40":{"cat":"Тормоза","fixed":0,"hours":0.6,"name":"Замена тормозного шланга","ord":40,"unit":"шт"},"p41":{"cat":"ТО и жидкости","fixed":0,"hours":0.34,"name":"Замена масла двигателя и фильтра","ord":41,"unit":"работа"},"p42":{"cat":"ТО и жидкости","fixed":0,"hours":0.1,"name":"Замена воздушного фильтра","ord":42,"unit":"шт"},"p43":{"cat":"ТО и жидкости","fixed":0,"hours":0.3,"name":"Замена салонного фильтра","ord":43,"unit":"шт"},"p44":{"cat":"ТО и жидкости","fixed":0,"hours":0.4,"name":"Замена топливного фильтра","ord":44,"unit":"шт"},"p45":{"cat":"ТО и жидкости","fixed":0,"hours":0.4,"name":"Замена свечей зажигания (4 шт)","ord":45,"unit":"комплект"},"p46":{"cat":"ТО и жидкости","fixed":0,"hours":1,"name":"Замена антифриза с промывкой","ord":46,"unit":"работа"},"p47":{"cat":"ТО и жидкости","fixed":0,"hours":0.5,"name":"Замена масла в КПП","ord":47,"unit":"работа"},"p48":{"cat":"Двигатель","fixed":0,"hours":1.7,"name":"Замена ремня ГРМ с роликами (8 кл.)","ord":48,"unit":"работа"},"p49":{"cat":"Двигатель","fixed":0,"hours":2.98,"name":"Замена ремня ГРМ, роликов и помпы (16 кл.)","ord":49,"unit":"работа"},"p50":{"cat":"Двигатель","fixed":0,"hours":5,"name":"Замена цепи ГРМ (Нива, комплект)","ord":50,"unit":"работа"},"p51":{"cat":"Двигатель","fixed":0,"hours":0.4,"name":"Замена ремня генератора","ord":51,"unit":"шт"},"p52":{"cat":"Двигатель","fixed":0,"hours":1.5,"name":"Замена помпы (без ГРМ)","ord":52,"unit":"шт"},"p53":{"cat":"Двигатель","fixed":0,"hours":0.8,"name":"Замена термостата","ord":53,"unit":"шт"},"p54":{"cat":"Двигатель","fixed":0,"hours":0.5,"name":"Замена прокладки клапанной крышки","ord":54,"unit":"шт"},"p55":{"cat":"Двигатель","fixed":0,"hours":1.5,"name":"Регулировка клапанов (8 кл.)","ord":55,"unit":"работа"},"p56":{"cat":"Двигатель","fixed":0,"hours":4,"name":"Замена маслосъёмных колпачков без снятия ГБЦ","ord":56,"unit":"работа"},"p57":{"cat":"Двигатель","fixed":0,"hours":6,"name":"Замена прокладки ГБЦ","ord":57,"unit":"работа"},"p58":{"cat":"Двигатель","fixed":0,"hours":1.5,"name":"Замена переднего сальника коленвала","ord":58,"unit":"шт"},"p59":{"cat":"Двигатель","fixed":0,"hours":0.8,"name":"Замена опоры двигателя","ord":59,"unit":"шт"},"p60":{"cat":"Двигатель","fixed":0,"hours":0.5,"name":"Чистка дроссельной заслонки","ord":60,"unit":"работа"},"p61":{"cat":"Двигатель","fixed":0,"hours":0.4,"name":"Замена датчика (типовой)","ord":61,"unit":"шт"},"p62":{"cat":"Двигатель","fixed":0,"hours":0.3,"name":"Замена модуля или катушки зажигания","ord":62,"unit":"шт"},"p63":{"cat":"Двигатель","fixed":0,"hours":1,"name":"Замена бензонасоса","ord":63,"unit":"шт"},"p64":{"cat":"Двигатель","fixed":0,"hours":8,"name":"Снятие и установка двигателя","ord":64,"unit":"работа"},"p65":{"cat":"Двигатель","fixed":0,"hours":16,"name":"Переборка двигателя (без мехобработки)","ord":65,"unit":"работа"},"p66":{"cat":"Сцепление","fixed":0,"hours":1.81,"name":"Замена сцепления (переднеприводный ВАЗ)","ord":66,"unit":"работа"},"p67":{"cat":"Сцепление","fixed":0,"hours":2.49,"name":"Замена сцепления (Нива)","ord":67,"unit":"работа"},"p68":{"cat":"Сцепление","fixed":0,"hours":0.5,"name":"Замена троса сцепления","ord":68,"unit":"шт"},"p69":{"cat":"Сцепление","fixed":0,"hours":0.8,"name":"Замена рабочего / главного цилиндра сцепления","ord":69,"unit":"шт"},"p70":{"cat":"Выхлоп и сварка","fixed":0,"hours":0.8,"name":"Замена глушителя или резонатора","ord":70,"unit":"шт"},"p71":{"cat":"Выхлоп и сварка","fixed":0,"hours":0.7,"name":"Сварка выхлопной системы","ord":71,"unit":"место"},"p72":{"cat":"Выхлоп и сварка","fixed":0,"hours":1,"name":"Сварочные работы по кузову, за час","ord":72,"unit":"час"}}};
+const DEF_SETTINGS={rate:1500,kb:1.25,kc:1.5,target:185000,remind:6};
+function loadData(){let raw=null;
+  try{raw=window.Android&&Android.load?Android.load():localStorage.getItem('smeta-db');}catch(e){}
+  try{const d=raw&&JSON.parse(raw);if(d&&d.prices&&d.orders)return {settings:Object.assign({},DEF_SETTINGS,d.settings),prices:d.prices,orders:d.orders};}catch(e){}
+  return {settings:Object.assign({},DEF_SETTINGS,SEED&&SEED.settings),prices:JSON.parse(JSON.stringify((SEED&&SEED.prices)||{})),orders:{}};}
+let DATA=loadData();
+const subs=[];
+function commit(){const json=JSON.stringify(DATA);
+  try{if(window.Android&&Android.save)Android.save(json);else localStorage.setItem('smeta-db',json);}catch(e){toast('Не удалось записать данные');}
+  subs.forEach(f=>f());}
+const rid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+const snapOf=(name,field,dir,lim)=>{const docs=Object.entries(DATA[name]).map(([id,d])=>({id,d}));
+  docs.sort((a,b)=>{const x=a.d[field],y=b.d[field];const c=x<y?-1:x>y?1:((a.d.createdAt||0)-(b.d.createdAt||0));return dir==='desc'?-c:c;});
+  return {docs:docs.slice(0,lim||docs.length).map(({id,d})=>({id,data:()=>JSON.parse(JSON.stringify(d))}))};};
+function coll(name){const q=(field,dir,lim)=>({limit:n=>q(field,dir,n),onSnapshot(cb){const f=()=>cb(snapOf(name,field,dir,lim));subs.push(f);f();}});
+  return {add:async o=>{const id=rid();DATA[name][id]=o;commit();return {id};},orderBy:(f,d)=>q(f,d),
+    doc:id=>({set:async o=>{DATA[name][id]=o;commit();},update:async p=>{if(!DATA[name][id])throw new Error('нет записи');Object.assign(DATA[name][id],p);commit();},delete:async()=>{delete DATA[name][id];commit();}})};}
+const localDb={collection:coll,doc:()=>({set:async o=>{DATA.settings=o;commit();},onSnapshot(cb){const f=()=>cb({exists:true,data:()=>({...DATA.settings})});subs.push(f);f();}})};
+
 /* ---------- данные ---------- */
 fillForm(est.form);renderEst();
 try{const t=localStorage.getItem('tab');if(t&&t!=='est')document.querySelector(`.tab[data-t=${t}]`)?.click();}catch(e){}
+/* ---------- резервная копия ---------- */
+function backupJson(){return JSON.stringify({app:'smeta',v:1,exportedAt:today(),settings:DATA.settings,prices:DATA.prices,orders:DATA.orders},null,1);}
+$('b-exp').onclick=()=>{const name='smeta-'+today()+'.json',json=backupJson();
+  if(window.Android&&Android.exportFile){Android.exportFile(json,name);return;}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('Файл сохранён');};
+window.onExported=ok=>toast(ok?'Копия сохранена':'Не удалось сохранить файл');
+let pending=null;
+$('b-imp').onclick=()=>$('b-file').click();
+$('b-file').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!d||typeof d.prices!=='object'||typeof d.orders!=='object')throw 0;pending=d;
+    $('b-info').textContent=`В файле ${Object.keys(d.prices).length} работ и ${Object.keys(d.orders).length} заказов. Текущие данные будут заменены.`;$('b-conf').hidden=false;}
+    catch(_){toast('Это не файл резервной копии');}};r.readAsText(f);};
+$('b-no').onclick=()=>{pending=null;$('b-conf').hidden=true;};
+$('b-yes').onclick=()=>{if(!pending)return;DATA={settings:Object.assign({},DEF_SETTINGS,pending.settings||{}),prices:pending.prices,orders:pending.orders};pending=null;$('b-conf').hidden=true;commit();toast('Данные загружены');};
+
 (async()=>{
-  db=window.claude?await window.claude.use('db'):null;
-  if(!db){$('status').textContent='база недоступна — данные не сохраняются';renderEst();renderLog();renderRem();renderPriceEdit(true);return;}
-  $('status').textContent='данные сохраняются';
+  db=localDb;
+  $('status').textContent='данные хранятся на телефоне';
   db.doc('app/settings').onSnapshot(s=>{if(s.exists)settings=Object.assign({rate:1500,kb:1.25,kc:1.5,target:185000,remind:6},s.data());renderSettings();renderEst();if(tab==='log')renderLog();if(tab==='rem')renderRem();},()=>{});
   db.collection('prices').orderBy('ord').onSnapshot(s=>{prices=s.docs.map(d=>({id:d.id,...d.data()}));renderCats();renderPlist();renderPriceEdit();},()=>{$('status').textContent='ошибка загрузки прайса';});
   db.collection('orders').orderBy('date','desc').limit(1000).onSnapshot(s=>{orders=s.docs.map(d=>({id:d.id,...d.data()}));
