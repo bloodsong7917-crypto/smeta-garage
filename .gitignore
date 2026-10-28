@@ -1,0 +1,4 @@
+out/
+*.jks
+*.keystore
+*.apk

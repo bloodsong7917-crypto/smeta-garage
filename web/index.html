@@ -1,0 +1,427 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Смета и журнал сервиса</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: рабочий инструмент мастера — липкие вкладки сверху, одна колонка до 920px, итог сметы липкой полосой снизу */
+:root{
+  --paper:#eef0ef; --sheet:#fbfbfa; --ink:#1c2226; --ink-2:#56626a; --rule:#d2d7d5; --rule-2:#e3e6e4;
+  --accent:#c4521c; --accent-ink:#ffffff; --accent-soft:#f7e3d8;
+  --ok:#2f6b46; --ok-soft:#dcefe2; --warn:#99600d; --warn-soft:#f7ead2; --bad:#a83232; --bad-soft:#f6dddd; --info:#2b5d8f; --info-soft:#dde8f4;
+  --f-disp:"IBM Plex Sans Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#14181a; --sheet:#1c2225; --ink:#e4e9e7; --ink-2:#9ba8ac; --rule:#34403f; --rule-2:#283231;
+  --accent:#ec8752; --accent-ink:#1a0d06; --accent-soft:#3b2519;
+  --ok:#7cc497; --ok-soft:#1d3326; --warn:#e3aa55; --warn-soft:#352a17; --bad:#ef8b8b; --bad-soft:#3a1f1f; --info:#86b5e6; --info-soft:#1c2c3d; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#14181a; --sheet:#1c2225; --ink:#e4e9e7; --ink-2:#9ba8ac; --rule:#34403f; --rule-2:#283231;
+  --accent:#ec8752; --accent-ink:#1a0d06; --accent-soft:#3b2519;
+  --ok:#7cc497; --ok-soft:#1d3326; --warn:#e3aa55; --warn-soft:#352a17; --bad:#ef8b8b; --bad-soft:#3a1f1f; --info:#86b5e6; --info-soft:#1c2c3d; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--paper);color:var(--ink);font:15px/1.5 var(--f-body);margin:0}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--sheet)}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--sheet);border-bottom:1px solid var(--rule)}
+.bar-in{max-width:920px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-block:10px 0}
+.brand{font:600 18px/1 var(--f-disp);letter-spacing:.01em;margin-right:auto;padding-bottom:10px}
+.brand small{display:block;font:400 11.5px var(--f-mono);color:var(--ink-2);margin-top:3px}
+.tabs{display:flex;gap:2px;overflow-x:auto;width:100%;scrollbar-width:none}
+.tab{font:500 14px var(--f-body);color:var(--ink-2);background:none;border:0;border-bottom:2.5px solid transparent;padding:8px 12px 9px;cursor:pointer;white-space:nowrap}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tab .cnt{font:500 11px var(--f-mono);background:var(--accent);color:var(--accent-ink);border-radius:9px;padding:1px 6px;margin-left:5px}
+main{max-width:920px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 140px;display:grid;gap:18px}
+h2{font:600 20px/1.2 var(--f-disp);margin:0}
+h3{font:500 15px/1.3 var(--f-body);margin:0}
+.muted{color:var(--ink-2)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:14px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+label.f{display:grid;gap:4px;font-size:12.5px;color:var(--ink-2)}
+input,select,textarea{font:inherit;font-size:15px;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:6px;padding:8px 10px;width:100%;min-width:0}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+button{font:inherit;cursor:pointer}
+.btn{font:500 14px var(--f-body);border:1px solid var(--rule);background:var(--sheet);color:var(--ink);border-radius:6px;padding:8px 12px;white-space:nowrap}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ghost{border-color:transparent;background:none;color:var(--ink-2)}
+.btn.sm{padding:4px 9px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:default}
+.seg{display:flex;border:1px solid var(--rule);border-radius:7px;overflow:hidden;flex-wrap:wrap}
+.seg button{flex:1 1 auto;border:0;background:var(--sheet);color:var(--ink-2);padding:8px 10px;font-size:13.5px;border-right:1px solid var(--rule);min-width:0}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:13px;border:1px solid var(--rule);background:var(--sheet);color:var(--ink-2);border-radius:14px;padding:4px 11px}
+.chip[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.plist{display:grid;border-top:1px solid var(--rule)}
+.pitem{display:grid;grid-template-columns:1fr auto auto;gap:4px 12px;align-items:center;padding:9px 2px;border-bottom:1px solid var(--rule-2)}
+.pitem .nm{min-width:0}
+.pitem .nm small{display:block;font:12px var(--f-mono);color:var(--ink-2)}
+.pitem .pr{font:500 14px var(--f-mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.add{width:34px;height:34px;border-radius:50%;border:1.5px solid var(--accent);background:none;color:var(--accent);font:500 20px/1 var(--f-mono);display:grid;place-items:center;padding:0}
+.add.on{background:var(--accent);color:var(--accent-ink)}
+.cat-h{font:600 13px var(--f-disp);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);padding:14px 2px 4px}
+.lines{display:grid}
+.line{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--rule-2)}
+.line .nm{min-width:0;overflow-wrap:anywhere}
+.qty{display:flex;align-items:center;border:1px solid var(--rule);border-radius:6px}
+.qty button{border:0;background:none;width:28px;height:30px;color:var(--ink);font:500 16px var(--f-mono)}
+.qty span{min-width:22px;text-align:center;font:500 13.5px var(--f-mono)}
+.x{border:0;background:none;color:var(--ink-2);font-size:18px;width:28px;height:28px}
+.part{display:grid;grid-template-columns:1fr 110px 64px 28px;gap:6px;align-items:center;padding:4px 0}
+.sum{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--sheet);border-top:1px solid var(--rule);padding-bottom:env(safe-area-inset-bottom,0px)}
+.sum-in{max-width:920px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.sum .tot{margin-right:auto;display:grid}
+.sum .tot b{font:500 22px/1.1 var(--f-mono);font-variant-numeric:tabular-nums}
+.sum .tot span{font-size:12px;color:var(--ink-2)}
+.pill{font:500 11.5px var(--f-body);border-radius:10px;padding:2px 8px;white-space:nowrap}
+.st-zapis{background:var(--info-soft);color:var(--info)} .st-work{background:var(--warn-soft);color:var(--warn)}
+.st-done{background:var(--accent-soft);color:var(--accent)} .st-paid{background:var(--ok-soft);color:var(--ok)}
+.order{display:grid;gap:6px;padding:12px 2px;border-bottom:1px solid var(--rule-2)}
+.order-h{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:baseline;cursor:pointer}
+.plate{font:500 14px var(--f-mono);letter-spacing:.03em;border:1.5px solid var(--ink);border-radius:4px;padding:0 6px;white-space:nowrap}
+.order-d{display:grid;gap:8px;padding:6px 0 4px;font-size:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0;border-top:1.5px solid var(--ink)}
+.kpi{padding:10px 12px 10px 0;border-bottom:1px solid var(--rule)}
+.kpi b{display:block;font:500 21px/1.2 var(--f-mono);font-variant-numeric:tabular-nums}
+.kpi span{font-size:12.5px;color:var(--ink-2)}
+.meter{height:10px;background:var(--rule-2);border-radius:5px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);border-radius:5px;transition:width .3s}
+.msg{white-space:pre-wrap;background:var(--paper);border:1px solid var(--rule);border-radius:6px;padding:10px;font-size:14px}
+.ped{display:grid;grid-template-columns:1fr 78px 96px 28px;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid var(--rule-2)}
+.ped input{padding:6px 8px;font-size:14px}
+.empty{padding:22px;text-align:center;color:var(--ink-2);border:1px dashed var(--rule);border-radius:8px}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:6px;font-size:14px;z-index:20}
+@media (max-width:560px){.part{grid-template-columns:1fr 90px 52px 28px}.ped{grid-template-columns:1fr 62px 84px 28px}.line{grid-template-columns:1fr auto auto}.line .lp{grid-column:2}}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="bar"><div class="bar-in">
+  <div class="brand">Смета и журнал<small id="status">подключаю базу…</small></div>
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" data-t="est" aria-selected="true">Смета</button>
+    <button class="tab" role="tab" data-t="log" aria-selected="false">Журнал</button>
+    <button class="tab" role="tab" data-t="rem" aria-selected="false">Напомнить<span class="cnt" id="remcnt" hidden></span></button>
+    <button class="tab" role="tab" data-t="price" aria-selected="false">Прайс</button>
+  </div>
+</div></div>
+
+<main>
+  <!-- СМЕТА -->
+  <section id="v-est" style="display:grid;gap:16px">
+    <div class="card" style="display:grid;gap:10px">
+      <div class="row" style="justify-content:space-between"><h3>Класс машины</h3><span class="muted mono" id="rateinfo" style="font-size:12.5px"></span></div>
+      <div class="seg" id="klass" role="group" aria-label="Класс машины">
+        <button data-k="a" aria-pressed="true">ВАЗ, Нива, классика</button>
+        <button data-k="b" aria-pressed="false">Иномарка</button>
+        <button data-k="c" aria-pressed="false">Кроссовер, джип, Газель</button>
+      </div>
+    </div>
+
+    <div class="card" style="display:grid;gap:10px">
+      <h3>Выбранные работы</h3>
+      <div class="lines" id="lines"></div>
+      <div id="lines-empty" class="muted" style="font-size:14px">Добавьте работы из прайса ниже кнопкой «+».</div>
+      <div style="display:grid;gap:6px;margin-top:6px">
+        <div class="row" style="justify-content:space-between"><h3>Запчасти</h3><button class="btn sm" id="addpart">+ Запчасть</button></div>
+        <div id="parts"></div>
+      </div>
+      <div class="row" style="margin-top:4px">
+        <label class="f" style="width:130px">Скидка на работу, %<input id="disc" type="number" min="0" max="50" step="1" value="0" inputmode="numeric"></label>
+        <div class="muted" id="breakdown" style="font-size:13.5px"></div>
+      </div>
+    </div>
+
+    <div class="card" style="display:grid;gap:10px">
+      <div class="row"><h3 style="margin-right:auto">Прайс работ</h3></div>
+      <input id="q" type="search" placeholder="Поиск: амортизатор, ГРМ, колодки…" aria-label="Поиск по прайсу">
+      <div class="chips" id="cats"></div>
+      <div id="plist"></div>
+    </div>
+
+    <div class="card" style="display:grid;gap:10px" id="orderbox">
+      <div class="row"><h3 style="margin-right:auto" id="ordtitle">Оформить заказ</h3><button class="btn ghost sm" id="newest" hidden>Новая смета</button></div>
+      <div class="grid2">
+        <label class="f">Госномер<input id="o-plate" placeholder="А123ВС 777" autocomplete="off"></label>
+        <label class="f">Машина<input id="o-car" placeholder="Нива 21214" autocomplete="off"></label>
+        <label class="f">Клиент<input id="o-name" placeholder="Имя" autocomplete="off"></label>
+        <label class="f">Телефон<input id="o-phone" type="tel" placeholder="+7…" autocomplete="off"></label>
+        <label class="f">Пробег, км<input id="o-km" type="number" inputmode="numeric" placeholder="125000"></label>
+        <label class="f">Дата<input id="o-date" type="date"></label>
+        <label class="f">Статус<select id="o-status"><option value="zapis">Запись</option><option value="work">В работе</option><option value="done">Готово</option><option value="paid">Оплачено</option></select></label>
+      </div>
+      <label class="f">Заметка<textarea id="o-note" rows="2" placeholder="Что беспокоит, что рекомендовали"></textarea></label>
+      <div class="muted" style="font-size:12.5px" id="platehint"></div>
+    </div>
+  </section>
+
+  <!-- ЖУРНАЛ -->
+  <section id="v-log" hidden style="display:grid;gap:16px">
+    <div class="card" style="display:grid;gap:12px">
+      <div class="row"><h2 style="margin-right:auto" id="mtitle">Месяц</h2>
+        <button class="btn sm" id="mprev" aria-label="Предыдущий месяц">←</button><button class="btn sm" id="mnext" aria-label="Следующий месяц">→</button></div>
+      <div class="kpis">
+        <div class="kpi"><b id="k-lab">0 ₽</b><span>за работу, оплачено</span></div>
+        <div class="kpi"><b id="k-parts">0 ₽</b><span>запчасти</span></div>
+        <div class="kpi"><b id="k-cnt">0</b><span>заказов оплачено</span></div>
+        <div class="kpi"><b id="k-hrs">0 ч</b><span>оплачено нормо-часов</span></div>
+      </div>
+      <div style="display:grid;gap:6px">
+        <div class="row" style="justify-content:space-between;font-size:13.5px"><span>Цель по работе: <b class="mono" id="k-target"></b></span><span class="mono" id="k-pct"></span></div>
+        <div class="meter"><i id="k-bar" style="width:0"></i></div>
+        <div class="muted" style="font-size:13px" id="k-left"></div>
+      </div>
+    </div>
+    <div class="card" style="display:grid;gap:10px">
+      <div class="row"><input id="lq" type="search" placeholder="Поиск: номер, телефон, машина" style="flex:1 1 220px" aria-label="Поиск по журналу">
+        <select id="lst" style="width:auto" aria-label="Статус"><option value="">Все статусы</option><option value="zapis">Запись</option><option value="work">В работе</option><option value="done">Готово</option><option value="paid">Оплачено</option></select></div>
+      <div id="orders"></div>
+    </div>
+  </section>
+
+  <!-- НАПОМИНАНИЯ -->
+  <section id="v-rem" hidden style="display:grid;gap:16px">
+    <div class="card" style="display:grid;gap:6px">
+      <h2>Кому пора на ТО</h2>
+      <p class="muted" style="margin:0;font-size:14px">Машины, у которых с последнего оплаченного заказа прошло больше <span id="rm-m"></span> мес. Скопируйте текст, отправьте клиенту и отметьте «Написал».</p>
+    </div>
+    <div id="rems" style="display:grid;gap:12px"></div>
+  </section>
+
+  <!-- ПРАЙС -->
+  <section id="v-price" hidden style="display:grid;gap:16px">
+    <div class="card" style="display:grid;gap:12px">
+      <h2>Ставка и коэффициенты</h2>
+      <div class="grid2">
+        <label class="f">Нормо-час, ₽<input id="s-rate" type="number" inputmode="numeric" step="50"></label>
+        <label class="f">Иномарка, коэф.<input id="s-kb" type="number" step="0.05"></label>
+        <label class="f">Кроссовер, джип, Газель, коэф.<input id="s-kc" type="number" step="0.05"></label>
+        <label class="f">Цель по работе в месяц, ₽<input id="s-target" type="number" step="1000" inputmode="numeric"></label>
+        <label class="f">Напоминать о ТО через, мес.<input id="s-remind" type="number" min="1" max="24"></label>
+      </div>
+      <p class="muted" style="margin:0;font-size:13px">Цена работы = нормо-часы × ставка × коэффициент класса, округление до 50 ₽. Если у работы указана фиксированная цена, берётся она.</p>
+    </div>
+    <div class="card" style="display:grid;gap:8px">
+      <div class="row"><h2 style="margin-right:auto">Работы</h2><button class="btn sm" id="p-add">+ Работа</button></div>
+      <div class="ped muted" style="font-size:12px;border-bottom:1px solid var(--rule)"><span>Название</span><span>Н/ч</span><span>Фикс. ₽</span><span></span></div>
+      <div id="pedit"></div>
+    </div>
+  </section>
+</main>
+
+<div class="sum" id="sumbar"><div class="sum-in">
+  <div class="tot"><b id="total">0 ₽</b><span id="totsub">работа 0 ₽ · запчасти 0 ₽</span></div>
+  <button class="btn" id="copy">Текст клиенту</button>
+  <button class="btn pri" id="save">Сохранить заказ</button>
+</div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const rub=n=>Math.round(n).toLocaleString('ru-RU')+' ₽';
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const today=()=>new Date().toISOString().slice(0,10);
+const normPlate=p=>String(p||'').toUpperCase().replace(/\s+/g,'');
+const ST={zapis:'Запись',work:'В работе',done:'Готово',paid:'Оплачено'};
+const KL={a:'ВАЗ, Нива, классика',b:'Иномарка',c:'Кроссовер, джип, Газель'};
+let db=null, settings={rate:1500,kb:1.25,kc:1.5,target:185000,remind:6}, prices=[], orders=[];
+let est={klass:'a',lines:[],parts:[],disc:0,editId:null};
+let cat='', q='', tab='est', monthOff=0;
+try{const s=JSON.parse(localStorage.getItem('est')||'null');if(s&&Array.isArray(s.lines))est=Object.assign(est,s);}catch(e){}
+function keep(){try{localStorage.setItem('est',JSON.stringify(est));}catch(e){}}
+function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,2200);}
+const coef=k=>k==='b'?+settings.kb||1:k==='c'?+settings.kc||1:1;
+const priceOf=(it,k)=>it.fixed>0?+it.fixed:Math.round((+it.hours||0)*(+settings.rate||0)*coef(k)/50)*50;
+
+/* ---------- вкладки ---------- */
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{tab=b.dataset.t;
+  document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
+  ['est','log','rem','price'].forEach(t=>$('v-'+t).hidden=t!==tab);$('sumbar').hidden=tab!=='est';
+  if(tab==='log')renderLog();if(tab==='rem')renderRem();if(tab==='price')renderPriceEdit(true);
+  try{localStorage.setItem('tab',tab);}catch(e){}}));
+
+/* ---------- смета ---------- */
+$('klass').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;est.klass=b.dataset.k;keep();renderEst();});
+$('disc').addEventListener('input',e=>{est.disc=Math.max(0,Math.min(50,+e.target.value||0));keep();renderTotals();});
+$('q').addEventListener('input',e=>{q=e.target.value.trim().toLowerCase();renderPlist();});
+$('addpart').addEventListener('click',()=>{est.parts.push({name:'',price:0,qty:1});keep();renderParts();setTimeout(()=>{const i=document.querySelectorAll('#parts .pn');i[i.length-1]?.focus();},0);});
+function cats(){const s=[];prices.forEach(p=>{if(p.cat&&!s.includes(p.cat))s.push(p.cat);});return s;}
+function renderCats(){const el=$('cats');el.innerHTML='';['',...cats()].forEach(c=>{const b=document.createElement('button');b.className='chip';b.textContent=c||'Все';b.setAttribute('aria-pressed',String(c===cat));b.onclick=()=>{cat=c;renderCats();renderPlist();};el.appendChild(b);});}
+function renderPlist(){
+  const el=$('plist');
+  if(!prices.length){el.innerHTML=`<div class="empty">${db?'Прайс пока пуст. Добавьте работы на вкладке «Прайс».':'Прайс хранится в базе страницы. Откройте страницу в Claude, войдя в свой аккаунт.'}</div>`;return;}
+  const list=prices.filter(p=>(!cat||p.cat===cat)&&(!q||(p.name+' '+p.cat).toLowerCase().includes(q)));
+  if(!list.length){el.innerHTML='<div class="empty">Ничего не нашлось. Попробуйте другое слово.</div>';return;}
+  let html='',last=null;
+  list.forEach(p=>{if(!cat&&!q&&p.cat!==last){html+=`<div class="cat-h">${esc(p.cat)}</div>`;last=p.cat;}
+    const on=est.lines.some(l=>l.pid===p.id);
+    html+=`<div class="pitem"><div class="nm">${esc(p.name)}<small>${p.fixed>0?'фикс.':(+p.hours||0).toLocaleString('ru-RU')+' н/ч'}${p.unit?' · за '+esc(p.unit):''}</small></div><div class="pr">${rub(priceOf(p,est.klass))}</div><button class="add${on?' on':''}" data-id="${esc(p.id)}" aria-label="Добавить: ${esc(p.name)}">${on?'✓':'+'}</button></div>`;});
+  el.innerHTML='<div class="plist">'+html+'</div>';
+  el.querySelectorAll('.add').forEach(b=>b.onclick=()=>{const p=prices.find(x=>x.id===b.dataset.id);if(!p)return;
+    const ex=est.lines.find(l=>l.pid===p.id);if(ex)ex.qty++;else est.lines.push({pid:p.id,name:p.name,hours:+p.hours||0,fixed:+p.fixed||0,unit:p.unit||'',qty:1});
+    keep();renderLines();renderPlist();renderTotals();toast('Добавлено: '+p.name);});
+}
+function renderLines(){
+  const el=$('lines');$('lines-empty').hidden=est.lines.length>0;el.innerHTML='';
+  est.lines.forEach((l,i)=>{const d=document.createElement('div');d.className='line';
+    d.innerHTML=`<div class="nm">${esc(l.name)}<div class="muted mono" style="font-size:12px">${l.fixed>0?'фикс.':(l.hours*l.qty).toLocaleString('ru-RU')+' н/ч'}</div></div>
+      <div class="qty"><button aria-label="Меньше">−</button><span>${l.qty}</span><button aria-label="Больше">+</button></div>
+      <div class="lp mono" style="text-align:right;white-space:nowrap">${rub(priceOf(l,est.klass)*l.qty)}</div><button class="x" aria-label="Убрать">×</button>`;
+    const [m,p]=d.querySelectorAll('.qty button');
+    m.onclick=()=>{l.qty=Math.max(1,l.qty-1);keep();renderLines();renderTotals();};
+    p.onclick=()=>{l.qty++;keep();renderLines();renderTotals();};
+    d.querySelector('.x').onclick=()=>{est.lines.splice(i,1);keep();renderLines();renderPlist();renderTotals();};
+    el.appendChild(d);});
+}
+function renderParts(){
+  const el=$('parts');el.innerHTML='';
+  est.parts.forEach((p,i)=>{const d=document.createElement('div');d.className='part';
+    d.innerHTML=`<input class="pn" placeholder="Название" value="${esc(p.name)}" aria-label="Запчасть"><input type="number" inputmode="numeric" placeholder="Цена ₽" value="${p.price||''}" aria-label="Цена"><input type="number" inputmode="numeric" min="1" value="${p.qty}" aria-label="Кол-во"><button class="x" aria-label="Убрать">×</button>`;
+    const [n,pr,qt]=d.querySelectorAll('input');
+    n.oninput=()=>{p.name=n.value;keep();};pr.oninput=()=>{p.price=+pr.value||0;keep();renderTotals();};qt.oninput=()=>{p.qty=Math.max(1,+qt.value||1);keep();renderTotals();};
+    d.querySelector('.x').onclick=()=>{est.parts.splice(i,1);keep();renderParts();renderTotals();};
+    el.appendChild(d);});
+}
+function calc(){const lab=est.lines.reduce((s,l)=>s+priceOf(l,est.klass)*l.qty,0);const labNet=Math.round(lab*(1-(est.disc||0)/100));
+  const parts=est.parts.reduce((s,p)=>s+(+p.price||0)*(+p.qty||1),0);const hrs=est.lines.reduce((s,l)=>s+(l.fixed>0?0:l.hours*l.qty),0);
+  return {lab,labNet,parts,total:labNet+parts,hrs};}
+function renderTotals(){const c=calc();$('total').textContent=rub(c.total);$('totsub').textContent=`работа ${rub(c.labNet)} · запчасти ${rub(c.parts)}`;
+  $('breakdown').textContent=est.disc>0?`Работа ${rub(c.lab)} − ${est.disc}% = ${rub(c.labNet)}`:(c.hrs?`≈ ${c.hrs.toLocaleString('ru-RU')} нормо-часа`:'');}
+function renderEst(){document.querySelectorAll('#klass button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.k===est.klass)));
+  $('rateinfo').textContent=`${rub(settings.rate)}/ч × ${coef(est.klass).toLocaleString('ru-RU')}`;$('disc').value=est.disc||0;
+  renderCats();renderPlist();renderLines();renderParts();renderTotals();renderOrderForm();}
+function renderOrderForm(){const o=est.editId?orders.find(x=>x.id===est.editId):null;
+  $('ordtitle').textContent=o?'Редактирование заказа':'Оформить заказ';$('newest').hidden=!est.editId;$('save').textContent=o?'Сохранить изменения':'Сохранить заказ';}
+['plate','car','name','phone','km','date','status','note'].forEach(f=>$('o-'+f).addEventListener('input',()=>{est.form=readForm();keep();if(f==='plate')plateHint();}));
+function readForm(){return {plate:$('o-plate').value.trim(),car:$('o-car').value.trim(),name:$('o-name').value.trim(),phone:$('o-phone').value.trim(),km:$('o-km').value,date:$('o-date').value,status:$('o-status').value,note:$('o-note').value};}
+function fillForm(f){f=f||{};$('o-plate').value=f.plate||'';$('o-car').value=f.car||'';$('o-name').value=f.name||'';$('o-phone').value=f.phone||'';$('o-km').value=f.km||'';$('o-date').value=f.date||today();$('o-status').value=f.status||'zapis';$('o-note').value=f.note||'';}
+function plateHint(){const p=normPlate($('o-plate').value);const prev=p?orders.filter(o=>normPlate(o.plate)===p):[];
+  const el=$('platehint');if(!prev.length){el.innerHTML='';return;}
+  const o=prev[0];el.innerHTML=`Эта машина уже была: ${prev.length} заказ(ов), последний ${esc(fmtDate(o.date))}. <button class="btn sm" id="fillprev">Подставить данные клиента</button>`;
+  $('fillprev').onclick=()=>{if(!$('o-car').value)$('o-car').value=o.car||'';if(!$('o-name').value)$('o-name').value=o.name||'';if(!$('o-phone').value)$('o-phone').value=o.phone||'';est.form=readForm();keep();};}
+$('newest').onclick=()=>{est={klass:'a',lines:[],parts:[],disc:0,editId:null,form:null};keep();fillForm(null);renderEst();toast('Новая смета');};
+function clientText(){const c=calc(),f=readForm();let t=`Смета${f.car?' · '+f.car:''}${f.plate?' · '+f.plate:''}\n\nРаботы:\n`;
+  est.lines.forEach(l=>t+=`— ${l.name}${l.qty>1?' ×'+l.qty:''}: ${rub(priceOf(l,est.klass)*l.qty)}\n`);
+  if(est.disc>0)t+=`Скидка на работу ${est.disc}%: −${rub(c.lab-c.labNet)}\n`;
+  const pp=est.parts.filter(p=>p.name||p.price);if(pp.length){t+=`\nЗапчасти:\n`;pp.forEach(p=>t+=`— ${p.name||'запчасть'}${p.qty>1?' ×'+p.qty:''}: ${rub((+p.price||0)*(+p.qty||1))}\n`);}
+  t+=`\nРабота: ${rub(c.labNet)}\nЗапчасти: ${rub(c.parts)}\nИтого: ${rub(c.total)}`;return t;}
+async function copyText(t){try{await navigator.clipboard.writeText(t);toast('Скопировано');}catch(e){const ta=document.createElement('textarea');ta.value=t;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('Скопировано');}catch(_){toast('Выделите текст и скопируйте вручную');}ta.remove();}}
+$('copy').onclick=()=>{if(!est.lines.length&&!est.parts.length){toast('Сначала добавьте работы');return;}copyText(clientText());};
+$('save').onclick=async()=>{
+  if(!db){toast('База недоступна: войдите в аккаунт Claude');return;}
+  if(!est.lines.length&&!est.parts.length){toast('Добавьте хотя бы одну работу или запчасть');return;}
+  const f=readForm();if(!f.plate&&!f.phone){toast('Укажите госномер или телефон');$('o-plate').focus();return;}
+  const c=calc();const body={date:f.date||today(),status:f.status,plate:f.plate,car:f.car,name:f.name,phone:f.phone,km:+f.km||null,note:f.note,klass:est.klass,
+    lines:est.lines.map(l=>({name:l.name,hours:l.hours,fixed:l.fixed||0,qty:l.qty,unit:l.unit||'',price:priceOf(l,est.klass)})),
+    parts:est.parts.filter(p=>p.name||p.price).map(p=>({name:p.name,price:+p.price||0,qty:+p.qty||1})),
+    disc:est.disc||0,labour:c.labNet,labourGross:c.lab,partsTotal:c.parts,total:c.total,hours:c.hrs,rate:+settings.rate};
+  const btn=$('save');btn.disabled=true;
+  try{if(est.editId){const old=orders.find(o=>o.id===est.editId)||{};body.createdAt=old.createdAt||Date.now();if(old.remindedAt)body.remindedAt=old.remindedAt;await db.collection('orders').doc(est.editId).set(body);toast('Заказ обновлён');}
+    else{body.createdAt=Date.now();await db.collection('orders').add(body);toast('Заказ сохранён');}
+    est={klass:est.klass,lines:[],parts:[],disc:0,editId:null,form:null};keep();fillForm(null);renderEst();
+  }catch(e){toast(e&&e.code==='quota_exceeded'?'База заполнена: удалите старые заказы':'Не удалось сохранить, попробуйте ещё раз');}
+  btn.disabled=false;};
+
+/* ---------- журнал ---------- */
+const fmtDate=d=>{if(!d)return'';const [y,m,dd]=d.split('-');return `${dd}.${m}.${y}`;};
+const MN=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+$('mprev').onclick=()=>{monthOff--;renderLog();};$('mnext').onclick=()=>{monthOff=Math.min(0,monthOff+1);renderLog();};
+$('lq').addEventListener('input',renderOrders);$('lst').addEventListener('change',renderOrders);
+function renderLog(){
+  const d=new Date();d.setDate(1);d.setMonth(d.getMonth()+monthOff);const key=d.toISOString().slice(0,7);
+  $('mtitle').textContent=MN[d.getMonth()][0].toUpperCase()+MN[d.getMonth()].slice(1)+' '+d.getFullYear();$('mnext').disabled=monthOff>=0;
+  const paid=orders.filter(o=>o.status==='paid'&&(o.date||'').startsWith(key));
+  const lab=paid.reduce((s,o)=>s+(+o.labour||0),0),pr=paid.reduce((s,o)=>s+(+o.partsTotal||0),0),hr=paid.reduce((s,o)=>s+(+o.hours||0),0);
+  $('k-lab').textContent=rub(lab);$('k-parts').textContent=rub(pr);$('k-cnt').textContent=paid.length;$('k-hrs').textContent=hr.toLocaleString('ru-RU',{maximumFractionDigits:1})+' ч';
+  const tg=+settings.target||1;$('k-target').textContent=rub(tg);const pct=Math.min(100,lab/tg*100);$('k-pct').textContent=Math.round(lab/tg*100)+' %';$('k-bar').style.width=pct+'%';
+  const left=tg-lab;$('k-left').textContent=left>0?`Осталось ${rub(left)} — это около ${Math.ceil(left/(+settings.rate||1))} нормо-часов по вашей ставке.`:'Цель месяца выполнена.';
+  renderOrders();}
+function renderOrders(){
+  const el=$('orders');const lq=$('lq').value.trim().toLowerCase(),ls=$('lst').value;
+  if(!db){el.innerHTML='<div class="empty">Журнал хранится в базе страницы. Откройте страницу в Claude, войдя в свой аккаунт.</div>';return;}
+  const list=orders.filter(o=>(!ls||o.status===ls)&&(!lq||[o.plate,o.phone,o.car,o.name].join(' ').toLowerCase().includes(lq)));
+  if(!orders.length){el.innerHTML='<div class="empty">Заказов пока нет. Соберите смету на вкладке «Смета» и нажмите «Сохранить заказ».</div>';return;}
+  if(!list.length){el.innerHTML='<div class="empty">Ничего не нашлось.</div>';return;}
+  el.innerHTML='';list.forEach(o=>{const d=document.createElement('div');d.className='order';
+    d.innerHTML=`<div class="order-h"><span class="plate">${esc(o.plate||'—')}</span><span style="min-width:0">${esc(o.car||'')}<span class="muted" style="font-size:13px"> · ${esc(fmtDate(o.date))}</span></span><span class="mono" style="font-weight:500">${rub(o.total||0)}</span>
+      <span></span><span class="muted" style="font-size:13px;min-width:0;overflow-wrap:anywhere">${esc((o.lines||[]).map(l=>l.name).join(', ')||'—')}</span><span class="pill st-${o.status}">${ST[o.status]||''}</span></div>
+      <div class="order-d" hidden>
+        <div>${esc(o.name||'')} ${o.phone?'· <span class="mono" style="user-select:all">'+esc(o.phone)+'</span>':''} ${o.km?'· '+(+o.km).toLocaleString('ru-RU')+' км':''}</div>
+        ${o.note?'<div class="muted">'+esc(o.note)+'</div>':''}
+        <div class="mono" style="font-size:13px">Работа ${rub(o.labour||0)}${o.disc?' (скидка '+o.disc+'%)':''} · запчасти ${rub(o.partsTotal||0)} · ${(+o.hours||0).toLocaleString('ru-RU')} н/ч</div>
+        <div class="row">${Object.keys(ST).map(s=>`<button class="btn sm" data-s="${s}" ${s===o.status?'disabled':''}>${ST[s]}</button>`).join('')}</div>
+        <div class="row"><button class="btn sm" data-a="edit">Открыть в смете</button><button class="btn sm" data-a="copy">Текст клиенту</button><button class="btn sm ghost" data-a="del">Удалить</button><span class="muted" data-a="conf" hidden style="font-size:13px">Удалить заказ? <button class="btn sm" data-a="yes">Да</button> <button class="btn sm ghost" data-a="no">Нет</button></span></div>
+      </div>`;
+    d.querySelector('.order-h').onclick=()=>{const x=d.querySelector('.order-d');x.hidden=!x.hidden;};
+    d.querySelectorAll('[data-s]').forEach(b=>b.onclick=async()=>{try{await db.collection('orders').doc(o.id).update({status:b.dataset.s});toast(ST[b.dataset.s]);}catch(e){toast('Не удалось изменить статус');}});
+    d.querySelector('[data-a=edit]').onclick=()=>{est={klass:o.klass||'a',disc:o.disc||0,editId:o.id,lines:(o.lines||[]).map(l=>({pid:null,name:l.name,hours:l.hours,fixed:l.fixed,unit:l.unit,qty:l.qty})),parts:(o.parts||[]).map(p=>({...p})),form:{plate:o.plate,car:o.car,name:o.name,phone:o.phone,km:o.km||'',date:o.date,status:o.status,note:o.note}};
+      keep();fillForm(est.form);document.querySelector('.tab[data-t=est]').click();renderEst();window.scrollTo(0,0);};
+    d.querySelector('[data-a=copy]').onclick=()=>{let t=`Заказ ${o.plate||''} от ${fmtDate(o.date)}\n`;(o.lines||[]).forEach(l=>t+=`— ${l.name}${l.qty>1?' ×'+l.qty:''}: ${rub(l.price*l.qty)}\n`);(o.parts||[]).forEach(p=>t+=`— ${p.name}${p.qty>1?' ×'+p.qty:''}: ${rub(p.price*p.qty)}\n`);t+=`Итого: ${rub(o.total||0)}`;copyText(t);};
+    const conf=d.querySelector('[data-a=conf]');d.querySelector('[data-a=del]').onclick=()=>conf.hidden=false;d.querySelector('[data-a=no]').onclick=()=>conf.hidden=true;
+    d.querySelector('[data-a=yes]').onclick=async()=>{try{await db.collection('orders').doc(o.id).delete();toast('Заказ удалён');}catch(e){toast('Не удалось удалить');}};
+    el.appendChild(d);});
+}
+
+/* ---------- напоминания ---------- */
+function dueList(){const by={};orders.forEach(o=>{if(o.status!=='paid'&&o.status!=='done')return;const p=normPlate(o.plate)||o.phone;if(!p)return;if(!by[p]||o.date>by[p].date)by[p]=o;});
+  const m=+settings.remind||6,soon=new Date();soon.setDate(soon.getDate()+14);
+  return Object.values(by).map(o=>{const d=new Date(o.date);d.setMonth(d.getMonth()+m);return {o,due:d};})
+    .filter(x=>x.due<=soon&&!(x.o.remindedAt&&x.o.remindedAt>=x.o.date)).sort((a,b)=>a.due-b.due);}
+function renderRem(){
+  $('rm-m').textContent=settings.remind;const el=$('rems');const list=dueList();
+  if(!db){el.innerHTML='<div class="empty">Напоминания строятся по журналу. Откройте страницу в Claude, войдя в свой аккаунт.</div>';return;}
+  if(!list.length){el.innerHTML='<div class="empty">Сейчас напоминать некому. Машины появятся здесь через '+settings.remind+' мес. после оплаченного заказа.</div>';return;}
+  el.innerHTML='';list.forEach(({o,due})=>{const d=document.createElement('div');d.className='card';d.style.display='grid';d.style.gap='8px';
+    const late=due<new Date();const msg=`Здравствуйте${o.name?', '+o.name:''}! Это мастерская, где вы делали ${o.car||'машину'} ${o.plate||''} ${fmtDate(o.date)}. Прошло ${settings.remind} мес. — пора на плановое ТО: масло, фильтры, проверка подвески. Есть свободное время на этой неделе, записать вас?`;
+    d.innerHTML=`<div class="row"><span class="plate">${esc(o.plate||'—')}</span><span style="margin-right:auto">${esc(o.car||'')} · ${esc(o.name||'')}</span><span class="pill ${late?'st-work':'st-zapis'}">${late?'пора с '+fmtDate(due.toISOString().slice(0,10)):'с '+fmtDate(due.toISOString().slice(0,10))}</span></div>
+      <div class="muted" style="font-size:13px">Последний раз: ${esc((o.lines||[]).map(l=>l.name).join(', '))}${o.phone?' · <span class="mono" style="user-select:all">'+esc(o.phone)+'</span>':''}</div>
+      <div class="msg">${esc(msg)}</div><div class="row"><button class="btn sm" data-a="c">Скопировать текст</button><button class="btn sm pri" data-a="r">Написал</button></div>`;
+    d.querySelector('[data-a=c]').onclick=()=>copyText(msg);
+    d.querySelector('[data-a=r]').onclick=async()=>{try{await db.collection('orders').doc(o.id).update({remindedAt:today()});toast('Отмечено');}catch(e){toast('Не удалось отметить');}};
+    el.appendChild(d);});
+}
+
+/* ---------- прайс ---------- */
+const sFields={rate:'s-rate',kb:'s-kb',kc:'s-kc',target:'s-target',remind:'s-remind'};
+Object.entries(sFields).forEach(([k,id])=>$(id).addEventListener('change',async e=>{const v=+e.target.value;if(!(v>0)){e.target.value=settings[k];return;}
+  settings[k]=v;renderEst();if(!db)return;try{await db.doc('app/settings').set({...settings});toast('Сохранено');}catch(_){toast('Не удалось сохранить');}}));
+function renderSettings(){Object.entries(sFields).forEach(([k,id])=>{if(document.activeElement!==$(id))$(id).value=settings[k];});}
+let pedDirty=false;
+$('pedit').addEventListener('focusout',()=>setTimeout(()=>{if(pedDirty&&!$('pedit').contains(document.activeElement)){pedDirty=false;renderPriceEdit();}},0));
+function renderPriceEdit(force){
+  const el=$('pedit');if(!force&&el.contains(document.activeElement)){pedDirty=true;return;}
+  if(!db){el.innerHTML='<div class="empty">Прайс хранится в базе страницы. Откройте страницу в Claude, войдя в свой аккаунт.</div>';return;}
+  if(!prices.length){el.innerHTML='<div class="empty">Работ пока нет. Нажмите «+ Работа».</div>';return;}
+  el.innerHTML='';let last=null;
+  prices.forEach(p=>{if(p.cat!==last){const h=document.createElement('div');h.className='cat-h';h.textContent=p.cat||'Без раздела';el.appendChild(h);last=p.cat;}
+    const d=document.createElement('div');d.className='ped';
+    d.innerHTML=`<input value="${esc(p.name)}" aria-label="Название"><input type="number" step="0.1" value="${p.hours??''}" aria-label="Нормо-часы"><input type="number" step="50" value="${p.fixed||''}" placeholder="—" aria-label="Фиксированная цена"><button class="x" aria-label="Удалить работу">×</button>`;
+    const [n,h,f]=d.querySelectorAll('input');const save=async patch=>{try{await db.collection('prices').doc(p.id).update(patch);}catch(e){toast('Не удалось сохранить');}};
+    n.onchange=()=>n.value.trim()&&save({name:n.value.trim()});h.onchange=()=>save({hours:+h.value||0});f.onchange=()=>save({fixed:+f.value||0});
+    const x=d.querySelector('.x');x.onclick=async()=>{if(x.dataset.c){try{await db.collection('prices').doc(p.id).delete();toast('Удалено');}catch(e){toast('Не удалось удалить');}}else{x.dataset.c='1';x.textContent='✓';x.style.color='var(--bad)';x.setAttribute('aria-label','Подтвердить удаление');setTimeout(()=>{x.dataset.c='';x.textContent='×';x.style.color='';},2500);}};
+    el.appendChild(d);});
+}
+$('p-add').onclick=async()=>{if(!db){toast('База недоступна');return;}const c=cat||cats()[0]||'Прочее';const ord=prices.reduce((m,p)=>Math.max(m,+p.ord||0),0)+1;
+  try{await db.collection('prices').add({cat:c,name:'Новая работа',hours:1,fixed:0,unit:'шт',ord});toast('Добавлено в раздел «'+c+'»');}catch(e){toast('Не удалось добавить');}};
+
+/* ---------- данные ---------- */
+fillForm(est.form);renderEst();
+try{const t=localStorage.getItem('tab');if(t&&t!=='est')document.querySelector(`.tab[data-t=${t}]`)?.click();}catch(e){}
+(async()=>{
+  db=window.claude?await window.claude.use('db'):null;
+  if(!db){$('status').textContent='база недоступна — данные не сохраняются';renderEst();renderLog();renderRem();renderPriceEdit(true);return;}
+  $('status').textContent='данные сохраняются';
+  db.doc('app/settings').onSnapshot(s=>{if(s.exists)settings=Object.assign({rate:1500,kb:1.25,kc:1.5,target:185000,remind:6},s.data());renderSettings();renderEst();if(tab==='log')renderLog();if(tab==='rem')renderRem();},()=>{});
+  db.collection('prices').orderBy('ord').onSnapshot(s=>{prices=s.docs.map(d=>({id:d.id,...d.data()}));renderCats();renderPlist();renderPriceEdit();},()=>{$('status').textContent='ошибка загрузки прайса';});
+  db.collection('orders').orderBy('date','desc').limit(1000).onSnapshot(s=>{orders=s.docs.map(d=>({id:d.id,...d.data()}));
+    const n=dueList().length;$('remcnt').hidden=!n;$('remcnt').textContent=n;plateHint();renderOrderForm();if(tab==='log')renderLog();if(tab==='rem')renderRem();},()=>{$('status').textContent='ошибка загрузки журнала';});
+})();
+})();
+</script>
+
+</body></html>
